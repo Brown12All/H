@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Anniversaire • L-Lanzambi</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%;overflow:hidden;background:#07050a;color:#fff;font-family:'Segoe UI',system-ui,-apple-system,sans-serif}
+canvas{position:fixed;inset:0;width:100%;height:100%}
+#bg{z-index:0}#fx{z-index:3;pointer-events:none}
+main{position:fixed;inset:0;z-index:2;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:20px;gap:2.4vh}
+.tag{letter-spacing:.4em;font-size:clamp(10px,2.4vw,14px);text-transform:uppercase;color:#d4af37;animation:pulse 2.5s infinite}
+h1{font-size:clamp(26px,6.5vw,64px);font-weight:900;background:linear-gradient(90deg,#fff3c4,#d4af37,#fff3c4,#b8860b,#fff3c4);background-size:300% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;animation:flow 6s linear infinite}
+.sub{opacity:.75;font-size:clamp(12px,3vw,18px)}
+.clock{display:flex;align-items:center;gap:clamp(4px,1.5vw,16px);transform-style:preserve-3d;transform:perspective(900px) rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg));transition:transform .15s ease-out}
+.grp{display:flex;gap:clamp(3px,.8vw,8px)}
+.d{position:relative;width:clamp(36px,11vw,92px);height:clamp(56px,17vw,140px);border-radius:14px;overflow:hidden;background:linear-gradient(160deg,rgba(255,255,255,.16),rgba(255,255,255,.03));border:1px solid rgba(255,215,120,.3);box-shadow:0 0 30px rgba(212,175,55,.25),inset 0 0 20px rgba(255,255,255,.05);animation:float 4s ease-in-out infinite}
+.grp .d:nth-child(2){animation-delay:.3s}
+.d span{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:clamp(34px,10.5vw,86px);font-weight:800;font-variant-numeric:tabular-nums;color:#fff}
+.d .in{animation:inn .45s cubic-bezier(.2,.9,.3,1) both}
+.d .out{animation:out .45s cubic-bezier(.6,0,.8,.4) both}
+@keyframes inn{from{transform:translateY(-110%)}to{transform:none}}
+@keyframes out{from{transform:none}to{transform:translateY(110%)}}
+.sep{font-size:clamp(24px,7vw,60px);font-weight:800;color:#d4af37;animation:blink 1s infinite}
+.lbl{display:flex;gap:clamp(4px,1.5vw,16px);font-size:clamp(9px,2.2vw,13px);letter-spacing:.3em;color:#a89868;text-transform:uppercase}
+.lbl i{font-style:normal;width:clamp(76px,23vw,192px)}
+#bday{position:fixed;left:0;right:0;bottom:0;z-index:4;padding:3vh 16px calc(4vh + env(safe-area-inset-bottom,0px));text-align:center;background:linear-gradient(transparent,rgba(7,5,10,.92) 40%);transform:translateY(120%);transition:transform 1.2s cubic-bezier(.2,.9,.3,1)}
+#bday.show{transform:none}
+#bday h2{font-size:clamp(20px,5.2vw,48px);font-weight:900;background:linear-gradient(90deg,#fff3c4,#d4af37,#f5d06f,#fff3c4);background-size:300% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;animation:flow 3s linear infinite,pop 1.6s ease-in-out infinite}
+#bday p{margin-top:8px;opacity:.85;font-size:clamp(11px,2.8vw,16px)}
+body.done .clock,body.done .lbl{opacity:.2}
+.clock,.lbl{transition:opacity 1s}
+@keyframes flow{to{background-position:300% 0}}
+@keyframes float{50%{transform:translateY(-8px)}}
+@keyframes blink{50%{opacity:.2}}
+@keyframes pulse{50%{opacity:.45}}
+@keyframes pop{50%{transform:scale(1.05)}}
+</style>
+</head>
+<body>
+<canvas id="bg"></canvas>
+<canvas id="fx"></canvas>
+<main>
+  <div class="tag" id="tag">🎁 Quelque chose arrive...</div>
+  <h1 id="title">L'anniversaire de L-Lanzambi</h1>
+  <div class="sub">Tsasa L-Lanzambi Honoré • CEO de Pilule Numérique</div>
+  <div class="clock" id="clock"></div>
+  <div class="lbl"><i>Heures</i><i>Minutes</i><i>Secondes</i></div>
+</main>
+<div id="bday">
+  <h2>🎉 Happy birthday to You L-Lanzambi the CEO of Pilule Numérique 🎂</h2>
+  <p>Tsasa L-Lanzambi Honoré • 08/10/2026</p>
+</div>
+
+<script>
+// Date cible : 8 octobre 2026 à 00:00:00 (heure locale de l'appareil)
+var TARGET = new Date(2026, 9, 8, 0, 0, 0).getTime();
+// Test : ajoute ?test=10 à l'URL pour un compte à rebours de 10 secondes
+var tq = new URLSearchParams(location.search).get('test');
+if (tq) TARGET = Date.now() + (+tq) * 1000;
+
+var boost = 1, finished = false, mx = 0, my = 0;
+var DPR = Math.min(window.devicePixelRatio || 1, 2);
+var W = 0, H = 0;
+
+// ===== Horloge =====
+var clock = document.getElementById('clock'), digits = [];
+for (var g = 0; g < 3; g++) {
+  var grp = document.createElement('div'); grp.className = 'grp';
+  for (var i = 0; i < 2; i++) { var d = document.createElement('div'); d.className = 'd'; grp.appendChild(d); digits.push(d); }
+  clock.appendChild(grp);
+  if (g < 2) { var sp = document.createElement('div'); sp.className = 'sep'; sp.textContent = ':'; clock.appendChild(sp); }
+}
+function setDigit(el, v) {
+  if (el.dataset.v === v) return;
+  var old = el.querySelector('.in');
+  if (old) { old.className = 'out'; setTimeout(function () { old.remove(); }, 480); }
+  var n = document.createElement('span'); n.textContent = v; n.className = el.dataset.v === undefined ? '' : 'in';
+  if (n.className === '') n.className = 'in';
+  el.appendChild(n); el.dataset.v = v;
+}
+function p2(n) { return String(n).padStart(2, '0'); }
+function tick() {
+  var diff = TARGET - Date.now();
+  if (diff <= 0) { show(0); if (!finished) celebrate(); return; }
+  show(diff);
+}
+function show(ms) {
+  var s = Math.floor(ms / 1000);
+  var str = p2(Math.floor(s / 3600)) + p2(Math.floor((s % 3600) / 60)) + p2(s % 60);
+  for (var i = 0; i < 6; i++) setDigit(digits[i], str[i]);
+}
+
+// ===== Canvas =====
+var bg = document.getElementById('bg'), bc = bg.getContext('2d');
+var fx = document.getElementById('fx'), fc = fx.getContext('2d');
+function fit() {
+  W = innerWidth; H = innerHeight;
+  [bg, fx].forEach(function (c) { c.width = W * DPR; c.height = H * DPR; });
+  bc.setTransform(DPR, 0, 0, DPR, 0, 0); fc.setTransform(DPR, 0, 0, DPR, 0, 0);
+}
+addEventListener('resize', fit); fit();
+addEventListener('pointermove', function (e) {
+  mx = e.clientX / W - .5; my = e.clientY / H - .5;
+  clock.style.setProperty('--ry', (mx * 14) + 'deg'); clock.style.setProperty('--rx', (-my * 10) + 'deg');
+});
+
+// Ballons (profondeur z : plus loin = plus petit, plus lent, plus transparent)
+var PAL = [['#ffe9a0', '#d4af37', '#6b5200'], ['#7a7a7a', '#181818', '#000'], ['#ffffff', '#e8e4d8', '#9a9588'], ['#f0d27a', '#b8860b', '#4a3500'], ['#9a9a9a', '#2e2e2e', '#050505']];
+var balloons = [], NB = W < 700 ? 12 : 20;
+function mk(first) {
+  var z = .35 + Math.random() * .65;
+  return { z: z, r: 55 * z + 10, x: Math.random() * W, y: first ? Math.random() * (H + 200) : H + 150, v: .35 + z * .7, f: Math.random() * 6, p: PAL[Math.floor(Math.random() * PAL.length)] };
+}
+for (var k = 0; k < NB; k++) balloons.push(mk(true));
+balloons.sort(function (a, b) { return a.z - b.z; });
+
+function drawBalloon(b, t) {
+  var sway = Math.sin(t * 1.2 + b.f);
+  var x = b.x + sway * 18 * b.z - mx * 60 * b.z, y = b.y - my * 40 * b.z, r = b.r;
+  bc.save(); bc.translate(x, y); bc.rotate(sway * .07); bc.globalAlpha = .45 + .55 * b.z;
+  // fil
+  bc.strokeStyle = 'rgba(255,255,255,.35)'; bc.lineWidth = Math.max(1, b.z * 1.2);
+  bc.beginPath(); bc.moveTo(0, r * 1.2);
+  for (var i = 1; i <= 6; i++) bc.quadraticCurveTo(Math.sin(t * 2 + i + b.f) * 7 * b.z, r * 1.2 + i * r * .45 - r * .2, Math.sin(t * 2 + i + .5 + b.f) * 5 * b.z, r * 1.2 + i * r * .45);
+  bc.stroke();
+  // corps
+  var gr = bc.createRadialGradient(-r * .3, -r * .4, r * .1, 0, 0, r * 1.15);
+  gr.addColorStop(0, b.p[0]); gr.addColorStop(.45, b.p[1]); gr.addColorStop(1, b.p[2]);
+  bc.fillStyle = gr; bc.beginPath(); bc.ellipse(0, 0, r * .85, r * 1.05, 0, 0, 6.2832); bc.fill();
+  // noeud
+  bc.fillStyle = b.p[2]; bc.beginPath(); bc.moveTo(0, r * 1.02); bc.lineTo(-r * .1, r * 1.2); bc.lineTo(r * .1, r * 1.2); bc.closePath(); bc.fill();
+  // reflets
+  bc.fillStyle = 'rgba(255,255,255,.55)'; bc.beginPath(); bc.ellipse(-r * .32, -r * .5, r * .13, r * .26, -.5, 0, 6.2832); bc.fill();
+  bc.fillStyle = 'rgba(255,255,255,.12)'; bc.beginPath(); bc.ellipse(r * .35, r * .35, r * .1, r * .3, .6, 0, 6.2832); bc.fill();
+  bc.restore();
+}
+
+// Poussière dorée
+var dust = [];
+for (var q = 0; q < 110; q++) dust.push({ x: Math.random(), y: Math.random(), s: Math.random() * 1.8 + .4, v: Math.random() * .0004 + .0001, f: Math.random() * 6 });
+
+// ===== Confettis + feux d'artifice =====
+var parts = [];
+function gold() { return 'hsl(' + (35 + Math.random() * 25) + ',90%,' + (55 + Math.random() * 30) + '%)'; }
+function burst(x, y, n) {
+  for (var i = 0; i < (n || 90); i++) {
+    var a = Math.random() * 6.283, s = Math.random() * 7 + 2;
+    parts.push({ x: x, y: y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: 1, c: Math.random() < .2 ? '#fff' : gold(), g: .08, sz: 2 + Math.random() * 2 });
+  }
+}
+function confetti(n) {
+  for (var i = 0; i < n; i++) parts.push({ x: Math.random() * W, y: -20, vx: (Math.random() - .5) * 3, vy: Math.random() * 4 + 2, life: 2, c: Math.random() < .25 ? '#fff' : gold(), g: .03, sz: 4 + Math.random() * 5, sq: 1 });
+}
+function drawFx() {
+  fc.clearRect(0, 0, W, H);
+  for (var i = parts.length - 1; i >= 0; i--) {
+    var p = parts[i]; p.x += p.vx; p.y += p.vy; p.vy += p.g; p.life -= p.sq ? .003 : .014;
+    if (p.life <= 0 || p.y > H + 30) { parts.splice(i, 1); continue; }
+    fc.globalAlpha = Math.min(1, p.life); fc.fillStyle = p.c;
+    if (p.sq) fc.fillRect(p.x, p.y, p.sz, p.sz * .6); else { fc.beginPath(); fc.arc(p.x, p.y, p.sz, 0, 6.283); fc.fill(); }
+  }
+  fc.globalAlpha = 1;
+}
+
+function celebrate() {
+  finished = true; boost = 3.5;
+  document.body.classList.add('done');
+  document.getElementById('tag').textContent = '🎂 C’est officiel !';
+  document.getElementById('title').textContent = '🎉 Joyeux anniversaire ! 🎉';
+  document.getElementById('bday').classList.add('show');
+  confetti(300);
+  var n = 0;
+  setInterval(function () { burst(Math.random() * W, Math.random() * H * .6); if (++n % 4 === 0) confetti(80); }, 500);
+  [0, 150, 300].forEach(function (dl, i) { setTimeout(function () { burst(W * (.25 + i * .25), H * .4, 140); }, dl); });
+}
+addEventListener('pointerdown', function (e) { if (finished) burst(e.clientX, e.clientY, 120); });
+
+// ===== Boucle d'animation =====
+function loop(ts) {
+  requestAnimationFrame(loop);
+  var t = ts / 1000;
+  var g = bc.createRadialGradient(W / 2, H * .4, 0, W / 2, H * .4, Math.max(W, H) * .8);
+  g.addColorStop(0, '#2a200a'); g.addColorStop(1, '#07050a');
+  bc.fillStyle = g; bc.fillRect(0, 0, W, H);
+  dust.forEach(function (d) {
+    d.y -= d.v * boost; if (d.y < 0) d.y = 1;
+    bc.fillStyle = 'rgba(255,217,138,' + (.25 + .5 * Math.abs(Math.sin(t * 1.5 + d.f))) + ')';
+    bc.beginPath(); bc.arc(d.x * W - mx * 20, d.y * H, d.s, 0, 6.283); bc.fill();
+  });
+  balloons.forEach(function (b, i) {
+    b.y -= b.v * boost; if (b.y < -b.r * 6) balloons[i] = Object.assign(mk(false), {});
+    drawBalloon(b, t);
+  });
+  drawFx();
+}
+requestAnimationFrame(loop);
+setInterval(tick, 200); tick();
+</script>
+</body>
+</html>
